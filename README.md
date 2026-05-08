@@ -20,7 +20,7 @@ A full-featured Progressive Web App (PWA) for tracking expenses across multiple 
 ## Live App
 
 ```
-https://witty-rock-0ab6b6900.7.azurestaticapps.net
+https://vehicle-expense-tracker.karuppu.dev
 ```
 
 ---

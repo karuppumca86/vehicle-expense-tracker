@@ -26,7 +26,7 @@ Here is what we built together, and how fast it happened.
 
 ## What We Built: Vehicle Expense Tracker PWA
 
-**Live app:** https://witty-rock-0ab6b6900.7.azurestaticapps.net
+**Live app:** https://vehicle-expense-tracker.karuppu.dev
 
 > 📸 *[Screenshot: Dashboard showing total spent this month, fuel share, mileage efficiency, and recent expenses for the active vehicle]*
 
@@ -195,7 +195,7 @@ It compresses the distance between the idea in your head and working software in
 ## Try It Yourself
 
 The app is live and free to use:
-👉 **https://witty-rock-0ab6b6900.7.azurestaticapps.net**
+👉 **https://vehicle-expense-tracker.karuppu.dev**
 
 Open it in Chrome on Android and install it to your home screen. Add a vehicle, log a fuel fill-up, photograph a receipt. See if it changes how you think about your vehicle costs.
 
