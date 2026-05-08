@@ -7,11 +7,21 @@ A full-featured Progressive Web App (PWA) for tracking expenses across multiple 
 - **Multi-vehicle support** — track Cars, Bikes, Trucks, Vans, Scooters independently
 - **AI bill scanning** — photograph receipts and auto-fill expense details using Gemini AI
 - **Mileage tracking** — km/L efficiency with fill-up log and trend chart
-- **Reports** — bar charts, category breakdown, period filters (week/month/year/all)
+- **Reports** — bar charts, category breakdown, period filters (week/month/year/all/pick month)
+- **Edit expenses** — tap the pencil icon on any expense to update it
 - **CSV export** — per-vehicle or all-vehicles export
 - **PWA installable** — works offline, installable on Android via Chrome
+- **Auto-updates** — installed PWA silently updates on next open after each deployment
 - **Dark mode** — automatic based on system preference
-- **IndexedDB storage** — all data stays on your device
+- **IndexedDB storage** — all data stays on your device, never lost on app updates
+
+---
+
+## Live App
+
+```
+https://witty-rock-0ab6b6900.7.azurestaticapps.net
+```
 
 ---
 
@@ -28,28 +38,21 @@ npm run preview   # Preview production build
 
 ## Deploy to Azure Static Web Apps
 
-The project is already deployed to:
-```
-https://witty-rock-0ab6b6900.7.azurestaticapps.net
-```
+Deployments are automated via GitHub Actions — every push to `master` builds and deploys automatically.
 
-To deploy the new `dist/` build:
+**Manual deploy (if needed):**
 
 ```bash
-# From d:\sbox\vehicle-tracker
 npm run build
 
-# Then deploy
 $token = az staticwebapp secrets list --name "car-tracker-app" --resource-group "rg-car-tracker" --query "properties.apiKey" -o tsv
 swa deploy dist --deployment-token $token --env production
 ```
 
-## Deploy to Netlify (alternative)
-
-1. Run `npm run build`
-2. Go to [netlify.com/drop](https://netlify.com/drop)
-3. Drag & drop the `dist/` folder
-4. Your app is live instantly
+**Azure resources:**
+- App name: `car-tracker-app`
+- Resource group: `rg-car-tracker`
+- GitHub secret: `AZURE_STATIC_WEB_APPS_API_TOKEN`
 
 ---
 
@@ -82,7 +85,7 @@ src/
 │   ├── VehicleCard.tsx
 │   ├── VehicleTypeIcon.tsx
 │   ├── StatCard.tsx
-│   ├── ExpenseItem.tsx
+│   ├── ExpenseItem.tsx       ← edit + delete per expense
 │   ├── CategoryChip.tsx
 │   ├── ProgressBar.tsx
 │   ├── EmptyState.tsx
@@ -90,8 +93,8 @@ src/
 ├── pages/
 │   ├── Welcome.tsx     ← first-launch screen
 │   ├── Dashboard.tsx   ← stats + recent expenses
-│   ├── AddExpense.tsx  ← form + AI scanning
-│   ├── Reports.tsx     ← charts + full list + export
+│   ├── AddExpense.tsx  ← form + AI scanning + edit mode
+│   ├── Reports.tsx     ← charts + full list + export + month picker
 │   ├── Mileage.tsx     ← km/L tracking + fill-up log
 │   ├── Vehicles.tsx    ← garage / vehicle management
 │   ├── AddVehicle.tsx  ← add/edit vehicle form
@@ -100,7 +103,7 @@ src/
 │   ├── ActiveVehicleContext.tsx  ← vehicle CRUD + active selection
 │   └── ToastContext.tsx
 ├── hooks/
-│   ├── useExpenses.ts    ← expense CRUD per vehicle
+│   ├── useExpenses.ts    ← expense CRUD per vehicle (add/update/delete)
 │   ├── useSettings.ts    ← Gemini API key
 │   ├── useGemini.ts      ← AI bill scanning
 │   └── useNavigation.ts  ← screen routing state
@@ -126,7 +129,7 @@ All data is stored locally in **IndexedDB** (`vehicle_tracker_db`):
 | `expenses` | Expense records indexed by `vehicleId` |
 | `settings` | Key-value: `geminiApiKey`, `activeVehicleId` |
 
-Deleting a vehicle cascades and deletes all its expenses.
+Deleting a vehicle cascades and deletes all its expenses. Data is never lost across app updates — IndexedDB persists independently of the app code.
 
 ---
 
