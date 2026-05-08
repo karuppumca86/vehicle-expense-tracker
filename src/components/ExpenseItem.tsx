@@ -1,7 +1,8 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { Expense } from '../types'
 import { CATEGORIES } from '../utils/categories'
-import { fmt, fmtDate } from '../utils/formatters'
+import { fmtDate } from '../utils/formatters'
+import { useCurrency } from '../contexts/CurrencyContext'
 
 interface Props {
   expense: Expense
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function ExpenseItem({ expense, onDelete, onEdit }: Props) {
+  const { fmt } = useCurrency()
   const cat = CATEGORIES[expense.category]
   const Icon = cat.icon
 

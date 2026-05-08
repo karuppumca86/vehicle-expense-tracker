@@ -2,7 +2,7 @@ import { MoreVertical, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 import type { Vehicle } from '../types'
 import { VehicleTypeIcon } from './VehicleTypeIcon'
-import { fmt } from '../utils/formatters'
+import { useCurrency } from '../contexts/CurrencyContext'
 
 interface Props {
   vehicle: Vehicle
@@ -14,6 +14,7 @@ interface Props {
 }
 
 export function VehicleCard({ vehicle, totalExpenses, isActive, onSelect, onEdit, onDelete }: Props) {
+  const { fmt } = useCurrency()
   const [menuOpen, setMenuOpen] = useState(false)
 
   const handleDelete = () => {

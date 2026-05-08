@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { KeyRound, Download, Trash2, PlayCircle, Info, ArrowLeft } from 'lucide-react'
+import { KeyRound, Download, Trash2, PlayCircle, Info, ArrowLeft, Coins } from 'lucide-react'
 import { useSettings } from '../hooks/useSettings'
 import { useToast } from '../contexts/ToastContext'
 import { useActiveVehicle } from '../contexts/ActiveVehicleContext'
 import { exportAllVehiclesCSV } from '../utils/csvExport'
 import { loadDemoData } from '../utils/demoData'
+import { CURRENCIES } from '../utils/currencies'
 import type { NavState } from '../types'
 
 interface Props {
@@ -12,11 +13,16 @@ interface Props {
 }
 
 export function Settings({ navigate }: Props) {
-  const { geminiApiKey, setGeminiApiKey } = useSettings()
+  const { geminiApiKey, setGeminiApiKey, currencyCode, setCurrencyCode } = useSettings()
   const { showToast } = useToast()
   const { setActiveVehicle, reload } = useActiveVehicle()
   const [keyInput, setKeyInput] = useState(geminiApiKey)
   const [loading, setLoading] = useState(false)
+
+  const handleCurrencyChange = async (code: string) => {
+    await setCurrencyCode(code)
+    showToast('Currency updated ✓')
+  }
 
   const handleSaveKey = async () => {
     await setGeminiApiKey(keyInput.trim())
@@ -86,6 +92,33 @@ export function Settings({ navigate }: Props) {
           >
             Save API Key
           </button>
+        </div>
+
+        {/* Currency */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-black/[0.07] dark:border-white/10 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Coins size={16} className="text-primary" />
+            <h2 className="text-sm font-bold text-gray-800 dark:text-gray-200">Currency</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                onClick={() => handleCurrencyChange(c.code)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                  currencyCode === c.code
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-black/[0.08] dark:border-white/10 text-gray-700 dark:text-gray-300'
+                }`}
+              >
+                <span className="text-base font-bold w-6 text-center flex-shrink-0">{c.symbol}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold truncate">{c.code}</p>
+                  <p className="text-[10px] text-gray-400 truncate">{c.name}</p>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Data */}

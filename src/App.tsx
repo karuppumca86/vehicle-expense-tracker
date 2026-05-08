@@ -13,6 +13,7 @@ import { AddVehicle } from './pages/AddVehicle'
 import { Settings } from './pages/Settings'
 import { useNavigation } from './hooks/useNavigation'
 import { getExpensesByVehicle } from './utils/db'
+import { CurrencyProvider } from './contexts/CurrencyContext'
 import type { Expense, TabType } from './types'
 
 const TAB_SCREENS: TabType[] = ['home', 'reports', 'add', 'mileage', 'garage']
@@ -75,10 +76,12 @@ export default function App() {
   return (
     <ToastProvider>
       <ActiveVehicleProvider>
-        <div className="h-full bg-gray-200 dark:bg-gray-900">
-          <AppShell />
-          <ToastContainer />
-        </div>
+        <CurrencyProvider>
+          <div className="h-full bg-gray-200 dark:bg-gray-900">
+            <AppShell />
+            <ToastContainer />
+          </div>
+        </CurrencyProvider>
       </ActiveVehicleProvider>
     </ToastProvider>
   )

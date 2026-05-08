@@ -9,7 +9,8 @@ import { VehicleSelector } from '../components/VehicleSelector'
 import { StatCard } from '../components/StatCard'
 import { EmptyState } from '../components/EmptyState'
 import { calculateMileage } from '../utils/mileage'
-import { fmt, fmtDate, fmtShortDate } from '../utils/formatters'
+import { fmtDate, fmtShortDate } from '../utils/formatters'
+import { useCurrency } from '../contexts/CurrencyContext'
 import type { NavState } from '../types'
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function Mileage({ navigate }: Props) {
+  const { fmt } = useCurrency()
   const { activeVehicle } = useActiveVehicle()
   const { expenses } = useExpenses(activeVehicle?.id ?? null)
 

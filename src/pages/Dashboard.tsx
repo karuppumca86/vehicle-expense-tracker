@@ -7,7 +7,8 @@ import { ExpenseItem } from '../components/ExpenseItem'
 import { ProgressBar } from '../components/ProgressBar'
 import { EmptyState } from '../components/EmptyState'
 import { CATEGORIES } from '../utils/categories'
-import { fmt, filterByPeriod } from '../utils/formatters'
+import { filterByPeriod } from '../utils/formatters'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { calculateMileage } from '../utils/mileage'
 import type { NavState } from '../types'
 
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function Dashboard({ navigate }: Props) {
+  const { fmt } = useCurrency()
   const { activeVehicle } = useActiveVehicle()
   const { expenses, removeExpense } = useExpenses(activeVehicle?.id ?? null)
 

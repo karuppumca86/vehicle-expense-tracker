@@ -12,7 +12,8 @@ import { ExpenseItem } from '../components/ExpenseItem'
 import { ProgressBar } from '../components/ProgressBar'
 import { EmptyState } from '../components/EmptyState'
 import { CATEGORIES } from '../utils/categories'
-import { fmt, fmtShortDate, filterByPeriod } from '../utils/formatters'
+import { fmtShortDate, filterByPeriod } from '../utils/formatters'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { exportVehicleCSV } from '../utils/csvExport'
 import type { NavState } from '../types'
 
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function Reports({ navigate }: Props) {
+  const { fmt } = useCurrency()
   const { activeVehicle } = useActiveVehicle()
   const { expenses, removeExpense } = useExpenses(activeVehicle?.id ?? null)
   const [period, setPeriod] = useState<Period>('month')
