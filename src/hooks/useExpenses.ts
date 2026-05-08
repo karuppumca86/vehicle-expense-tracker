@@ -35,5 +35,10 @@ export function useExpenses(vehicleId: string | null) {
     await load()
   }, [load])
 
-  return { expenses, loading, addExpense, removeExpense, reload: load }
+  const updateExpense = useCallback(async (expense: Expense) => {
+    await saveExpense(expense)
+    await load()
+  }, [load])
+
+  return { expenses, loading, addExpense, updateExpense, removeExpense, reload: load }
 }

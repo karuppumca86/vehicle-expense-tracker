@@ -115,7 +115,7 @@ export function Dashboard({ navigate }: Props) {
           </div>
           <div className="px-4 pb-2">
             {recent.length > 0 ? (
-              recent.map((e) => <ExpenseItem key={e.id} expense={e} onDelete={removeExpense} />)
+              recent.map((e) => <ExpenseItem key={e.id} expense={e} onDelete={removeExpense} onEdit={(id) => navigate({ screen: 'editExpense', editExpenseId: id })} />)
             ) : (
               <EmptyState
                 icon={Receipt}

@@ -59,11 +59,13 @@ export type Screen =
   | 'garage'
   | 'addVehicle'
   | 'editVehicle'
+  | 'editExpense'
   | 'settings'
 
 export interface NavState {
   screen: Screen
   editVehicleId?: string
+  editExpenseId?: string
 }
 
 export interface ToastMessage {

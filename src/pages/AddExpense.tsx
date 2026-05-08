@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, Loader2, RefreshCw } from 'lucide-react'
 import { useActiveVehicle } from '../contexts/ActiveVehicleContext'
 import { useExpenses } from '../hooks/useExpenses'
@@ -9,29 +9,40 @@ import { CategoryChip } from '../components/CategoryChip'
 import { VehicleTypeIcon } from '../components/VehicleTypeIcon'
 import { BASE_CATEGORIES, BIKE_EXTRA_CATEGORIES, FUEL_TYPES } from '../utils/categories'
 import { today } from '../utils/formatters'
-import type { ExpenseCategory, NavState } from '../types'
+import type { Expense, ExpenseCategory, NavState } from '../types'
 
 interface Props {
   navigate: (s: NavState) => void
+  editExpense?: Expense
 }
 
-export function AddExpense({ navigate }: Props) {
+export function AddExpense({ navigate, editExpense }: Props) {
   const { activeVehicle } = useActiveVehicle()
-  const { addExpense } = useExpenses(activeVehicle?.id ?? null)
+  const { addExpense, updateExpense } = useExpenses(activeVehicle?.id ?? null)
   const { geminiApiKey } = useSettings()
   const { scanning, scanBill } = useGemini()
   const { showToast } = useToast()
 
-  const [category, setCategory] = useState<ExpenseCategory>('Fuel')
-  const [amount, setAmount] = useState('')
-  const [date, setDate] = useState(today())
-  const [notes, setNotes] = useState('')
-  const [liters, setLiters] = useState('')
-  const [odometer, setOdometer] = useState('')
-  const [fuelType, setFuelType] = useState(activeVehicle?.defaultFuelType ?? 'Petrol')
-  const [preview, setPreview] = useState<string | null>(null)
-  const [imageData, setImageData] = useState<{ base64: string; mime: string } | null>(null)
+  const isEditing = !!editExpense
+
+  const [category, setCategory] = useState<ExpenseCategory>(editExpense?.category ?? 'Fuel')
+  const [amount, setAmount] = useState(editExpense ? String(editExpense.amount) : '')
+  const [date, setDate] = useState(editExpense?.date ?? today())
+  const [notes, setNotes] = useState(editExpense?.notes ?? '')
+  const [liters, setLiters] = useState(editExpense?.liters != null ? String(editExpense.liters) : '')
+  const [odometer, setOdometer] = useState(editExpense?.odometer != null ? String(editExpense.odometer) : '')
+  const [fuelType, setFuelType] = useState(editExpense?.fuelType ?? activeVehicle?.defaultFuelType ?? 'Petrol')
+  const [preview, setPreview] = useState<string | null>(
+    editExpense?.billImageBase64 ? `data:image/jpeg;base64,${editExpense.billImageBase64}` : null
+  )
+  const [imageData, setImageData] = useState<{ base64: string; mime: string } | null>(
+    editExpense?.billImageBase64 ? { base64: editExpense.billImageBase64, mime: 'image/jpeg' } : null
+  )
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!editExpense) setFuelType(activeVehicle?.defaultFuelType ?? 'Petrol')
+  }, [activeVehicle, editExpense])
 
   const categories = activeVehicle?.type === 'bike'
     ? [...BASE_CATEGORIES, ...BIKE_EXTRA_CATEGORIES]
@@ -74,6 +85,23 @@ export function AddExpense({ navigate }: Props) {
     if (!date) { showToast('Select a date', 'error'); return }
     if (!activeVehicle) { showToast('No active vehicle', 'error'); return }
 
+    if (isEditing && editExpense) {
+      await updateExpense({
+        ...editExpense,
+        category,
+        amount: amt,
+        date,
+        notes,
+        liters: category === 'Fuel' && liters ? parseFloat(liters) : null,
+        odometer: category === 'Fuel' && odometer ? parseInt(odometer) : null,
+        fuelType: category === 'Fuel' ? fuelType : null,
+        billImageBase64: imageData?.base64 ?? null,
+      })
+      showToast('Expense updated ✓')
+      navigate({ screen: 'home' })
+      return
+    }
+
     await addExpense({
       vehicleId: activeVehicle.id,
       category,
@@ -96,7 +124,9 @@ export function AddExpense({ navigate }: Props) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex-shrink-0 px-4 pt-4 pb-2 bg-gray-50 dark:bg-gray-950">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Add Expense</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
+          {isEditing ? 'Edit Expense' : 'Add Expense'}
+        </h1>
         {activeVehicle && (
           <div className="flex items-center gap-2 mt-1">
             <VehicleTypeIcon type={activeVehicle.type} size={11} />
@@ -244,7 +274,7 @@ export function AddExpense({ navigate }: Props) {
           className="w-full py-4 bg-primary text-white font-bold text-base rounded-2xl
             active:scale-95 transition-transform shadow-lg shadow-primary/30 mt-2"
         >
-          Save Expense
+          {isEditing ? 'Update Expense' : 'Save Expense'}
         </button>
       </div>
     </div>

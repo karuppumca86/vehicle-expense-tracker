@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react'
+import { Pencil, Trash2 } from 'lucide-react'
 import type { Expense } from '../types'
 import { CATEGORIES } from '../utils/categories'
 import { fmt, fmtDate } from '../utils/formatters'
@@ -6,9 +6,10 @@ import { fmt, fmtDate } from '../utils/formatters'
 interface Props {
   expense: Expense
   onDelete: (id: string) => void
+  onEdit?: (id: string) => void
 }
 
-export function ExpenseItem({ expense, onDelete }: Props) {
+export function ExpenseItem({ expense, onDelete, onEdit }: Props) {
   const cat = CATEGORIES[expense.category]
   const Icon = cat.icon
 
@@ -36,6 +37,16 @@ export function ExpenseItem({ expense, onDelete }: Props) {
         </p>
       </div>
       <p className="text-sm font-bold text-gray-900 dark:text-gray-100 flex-shrink-0">{fmt(expense.amount)}</p>
+      {onEdit && (
+        <button
+          onClick={() => onEdit(expense.id)}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400
+            hover:text-primary hover:bg-primary/10 transition-colors flex-shrink-0"
+          aria-label="Edit expense"
+        >
+          <Pencil size={15} />
+        </button>
+      )}
       <button
         onClick={handleDelete}
         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400

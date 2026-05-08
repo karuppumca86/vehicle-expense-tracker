@@ -1,4 +1,4 @@
-import { Download } from 'lucide-react'
+import { CalendarDays, Download } from 'lucide-react'
 import { useState } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -16,7 +16,9 @@ import { fmt, fmtShortDate, filterByPeriod } from '../utils/formatters'
 import { exportVehicleCSV } from '../utils/csvExport'
 import type { NavState } from '../types'
 
-type Period = 'week' | 'month' | 'year' | 'all'
+type Period = 'week' | 'month' | 'year' | 'all' | 'pick'
+
+const currentYearMonth = () => new Date().toISOString().slice(0, 7)
 
 interface Props {
   navigate: (s: NavState) => void
@@ -26,8 +28,11 @@ export function Reports({ navigate }: Props) {
   const { activeVehicle } = useActiveVehicle()
   const { expenses, removeExpense } = useExpenses(activeVehicle?.id ?? null)
   const [period, setPeriod] = useState<Period>('month')
+  const [pickedMonth, setPickedMonth] = useState(currentYearMonth())
 
-  const filtered = filterByPeriod(expenses, period)
+  const filtered = period === 'pick'
+    ? expenses.filter((e) => e.date.startsWith(pickedMonth))
+    : filterByPeriod(expenses, period)
   const total = filtered.reduce((s, e) => s + e.amount, 0)
   const fuelAmt = filtered.filter((e) => e.category === 'Fuel').reduce((s, e) => s + e.amount, 0)
 
@@ -48,7 +53,7 @@ export function Reports({ navigate }: Props) {
     { id: 'week', label: 'Week' },
     { id: 'month', label: 'Month' },
     { id: 'year', label: 'Year' },
-    { id: 'all', label: 'All time' },
+    { id: 'all', label: 'All' },
   ]
 
   return (
@@ -62,7 +67,7 @@ export function Reports({ navigate }: Props) {
 
       <div className="flex-1 scroll-view pb-nav px-4 pt-3">
         {/* Period tabs */}
-        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 gap-1 mb-4">
+        <div className="flex bg-gray-100 dark:bg-gray-800 rounded-2xl p-1 gap-1 mb-2">
           {PERIODS.map(({ id, label }) => (
             <button
               key={id}
@@ -76,7 +81,34 @@ export function Reports({ navigate }: Props) {
               {label}
             </button>
           ))}
+          <button
+            onClick={() => setPeriod('pick')}
+            className={`px-3 py-2 rounded-xl transition-all flex items-center justify-center ${
+              period === 'pick'
+                ? 'bg-white dark:bg-gray-700 text-primary shadow-sm'
+                : 'text-gray-500 dark:text-gray-400'
+            }`}
+            aria-label="Pick month"
+          >
+            <CalendarDays size={15} />
+          </button>
         </div>
+
+        {/* Month picker — shown only when "pick" is active */}
+        {period === 'pick' && (
+          <div className="mb-4">
+            <input
+              type="month"
+              value={pickedMonth}
+              max={currentYearMonth()}
+              onChange={(e) => setPickedMonth(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-2xl border border-black/[0.08] dark:border-white/10
+                bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-sm font-semibold
+                focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+        )}
+        {period !== 'pick' && <div className="mb-2" />}
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2.5 mb-4">
@@ -141,7 +173,7 @@ export function Reports({ navigate }: Props) {
           </div>
           <div className="px-4 pb-2">
             {sorted.length > 0 ? (
-              sorted.map((e) => <ExpenseItem key={e.id} expense={e} onDelete={removeExpense} />)
+              sorted.map((e) => <ExpenseItem key={e.id} expense={e} onDelete={removeExpense} onEdit={(id) => navigate({ screen: 'editExpense', editExpenseId: id })} />)
             ) : (
               <EmptyState icon={Download} title="No data" subtitle="Try a different time period" />
             )}
