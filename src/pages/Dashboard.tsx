@@ -23,8 +23,9 @@ export function Dashboard({ navigate }: Props) {
 
   const mth = filterByPeriod(expenses, 'month')
   const mthTotal = mth.reduce((s, e) => s + e.amount, 0)
-  const mthFuel = mth.filter((e) => e.category === 'Fuel').reduce((s, e) => s + e.amount, 0)
-  const allTotal = expenses.reduce((s, e) => s + e.amount, 0)
+  const mthFuelExpenses = mth.filter((e) => e.category === 'Fuel')
+  const mthFuel = mthFuelExpenses.reduce((s, e) => s + e.amount, 0)
+  const mthLitres = mthFuelExpenses.reduce((s, e) => s + (e.liters ?? 0), 0)
   const { averageKmL } = calculateMileage(expenses)
 
   const catTotals = new Map<string, number>()
@@ -66,13 +67,17 @@ export function Dashboard({ navigate }: Props) {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-2.5 mt-3">
           <StatCard label="This month" value={fmt(mthTotal)} sub={`${mth.length} expense${mth.length !== 1 ? 's' : ''}`} accent />
-          <StatCard label="Fuel cost" value={fmt(mthFuel)} sub={`${mth.filter((e) => e.category === 'Fuel').length} fill-ups`} />
+          <StatCard label="Fuel cost" value={fmt(mthFuel)} sub={`${mthFuelExpenses.length} fill-ups`} />
+          <StatCard
+            label="Total litres"
+            value={mthLitres > 0 ? `${mthLitres.toFixed(1)} L` : '—'}
+            sub={mthLitres > 0 && mthFuel > 0 ? `${fmt(Math.round(mthFuel / mthLitres))}/L` : 'No fuel data'}
+          />
           <StatCard
             label="Avg mileage"
             value={averageKmL ? `${averageKmL.toFixed(1)} km/L` : '—'}
             sub="from fuel logs"
           />
-          <StatCard label="All-time total" value={fmt(allTotal)} sub={`${expenses.length} records`} />
         </div>
 
         {/* Category breakdown */}
