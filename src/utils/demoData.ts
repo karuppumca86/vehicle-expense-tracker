@@ -20,6 +20,7 @@ function exp(
     odometer: null,
     fuelType: null,
     billImageBase64: null,
+    billMimeType: null,
     createdAt: new Date().toISOString(),
     ...extra,
   }

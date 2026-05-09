@@ -54,7 +54,14 @@ function AppShell() {
   if (screen === 'addVehicle')  return <AddVehicle navigate={navigate} />
   if (screen === 'editVehicle') return <AddVehicle navigate={navigate} editVehicleId={editVehicleId} />
   if (screen === 'settings')    return <Settings   navigate={navigate} />
-  if (screen === 'editExpense') return <AddExpense navigate={navigate} editExpense={editingExpense ?? undefined} />
+  if (screen === 'editExpense') {
+    if (!editingExpense) return (
+      <div className="flex items-center justify-center h-full bg-gray-50 dark:bg-gray-950">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+    return <AddExpense navigate={navigate} editExpense={editingExpense} />
+  }
 
   const activeTab = TAB_SCREENS.includes(screen as TabType) ? (screen as TabType) : 'home'
 

@@ -37,6 +37,7 @@ export interface Expense {
   odometer: number | null
   fuelType: string | null
   billImageBase64: string | null
+  billMimeType: string | null
   createdAt: string
 }
 

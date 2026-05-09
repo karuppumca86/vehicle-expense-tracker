@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { Camera, Loader2, RefreshCw } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Camera, FileText, Loader2, Paperclip, X } from 'lucide-react'
 import { useActiveVehicle } from '../contexts/ActiveVehicleContext'
 import { useExpenses } from '../hooks/useExpenses'
 import { useSettings } from '../hooks/useSettings'
 import { useGemini } from '../hooks/useGemini'
 import { useToast } from '../contexts/ToastContext'
+import { useCurrency } from '../contexts/CurrencyContext'
 import { CategoryChip } from '../components/CategoryChip'
 import { VehicleTypeIcon } from '../components/VehicleTypeIcon'
 import { BASE_CATEGORIES, BIKE_EXTRA_CATEGORIES, FUEL_TYPES } from '../utils/categories'
@@ -22,6 +23,7 @@ export function AddExpense({ navigate, editExpense }: Props) {
   const { geminiApiKey } = useSettings()
   const { scanning, scanBill } = useGemini()
   const { showToast } = useToast()
+  const { currency } = useCurrency()
 
   const isEditing = !!editExpense
 
@@ -32,21 +34,25 @@ export function AddExpense({ navigate, editExpense }: Props) {
   const [liters, setLiters] = useState(editExpense?.liters != null ? String(editExpense.liters) : '')
   const [odometer, setOdometer] = useState(editExpense?.odometer != null ? String(editExpense.odometer) : '')
   const [fuelType, setFuelType] = useState(editExpense?.fuelType ?? activeVehicle?.defaultFuelType ?? 'Petrol')
-  const [preview, setPreview] = useState<string | null>(
-    editExpense?.billImageBase64 ? `data:image/jpeg;base64,${editExpense.billImageBase64}` : null
-  )
-  const [imageData, setImageData] = useState<{ base64: string; mime: string } | null>(
-    editExpense?.billImageBase64 ? { base64: editExpense.billImageBase64, mime: 'image/jpeg' } : null
-  )
-  const fileRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (!editExpense) setFuelType(activeVehicle?.defaultFuelType ?? 'Petrol')
-  }, [activeVehicle, editExpense])
+  const existingMime = editExpense?.billMimeType ?? (editExpense?.billImageBase64 ? 'image/jpeg' : null)
+  const [imageData, setImageData] = useState<{ base64: string; mime: string } | null>(
+    editExpense?.billImageBase64 ? { base64: editExpense.billImageBase64, mime: existingMime! } : null
+  )
+  const [preview, setPreview] = useState<string | null>(
+    editExpense?.billImageBase64
+      ? `data:${existingMime};base64,${editExpense.billImageBase64}`
+      : null
+  )
+
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const categories = activeVehicle?.type === 'bike'
     ? [...BASE_CATEGORIES, ...BIKE_EXTRA_CATEGORIES]
     : BASE_CATEGORIES
+
+  const isPdf = imageData?.mime === 'application/pdf'
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -55,15 +61,23 @@ export function AddExpense({ navigate, editExpense }: Props) {
     reader.onload = async (ev) => {
       const result = ev.target?.result as string
       const base64 = result.split(',')[1]
+      const mime = file.type || 'image/jpeg'
+      setImageData({ base64, mime })
       setPreview(result)
-      setImageData({ base64, mime: file.type || 'image/jpeg' })
+
+      if (mime === 'application/pdf') {
+        showToast('PDF attached ✓')
+        e.target.value = ''
+        return
+      }
 
       if (!geminiApiKey) {
         showToast('Set your Gemini API key in Settings to enable AI scanning', 'info')
+        e.target.value = ''
         return
       }
       try {
-        const extracted = await scanBill(base64, file.type || 'image/jpeg', geminiApiKey)
+        const extracted = await scanBill(base64, mime, geminiApiKey)
         if (extracted.amount) setAmount(String(extracted.amount))
         if (extracted.date) setDate(extracted.date)
         if (extracted.notes) setNotes(extracted.notes)
@@ -79,31 +93,27 @@ export function AddExpense({ navigate, editExpense }: Props) {
     e.target.value = ''
   }
 
+  const handleRemoveBill = () => {
+    setImageData(null)
+    setPreview(null)
+  }
+
+  const handleViewPdf = () => {
+    if (!imageData) return
+    const bytes = atob(imageData.base64)
+    const arr = new Uint8Array(bytes.length)
+    for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+    const blob = new Blob([arr], { type: 'application/pdf' })
+    window.open(URL.createObjectURL(blob), '_blank')
+  }
+
   const handleSave = async () => {
     const amt = parseFloat(amount)
     if (!amt || amt <= 0) { showToast('Enter a valid amount', 'error'); return }
     if (!date) { showToast('Select a date', 'error'); return }
     if (!activeVehicle) { showToast('No active vehicle', 'error'); return }
 
-    if (isEditing && editExpense) {
-      await updateExpense({
-        ...editExpense,
-        category,
-        amount: amt,
-        date,
-        notes,
-        liters: category === 'Fuel' && liters ? parseFloat(liters) : null,
-        odometer: category === 'Fuel' && odometer ? parseInt(odometer) : null,
-        fuelType: category === 'Fuel' ? fuelType : null,
-        billImageBase64: imageData?.base64 ?? null,
-      })
-      showToast('Expense updated ✓')
-      navigate({ screen: 'home' })
-      return
-    }
-
-    await addExpense({
-      vehicleId: activeVehicle.id,
+    const expenseFields = {
       category,
       amount: amt,
       date,
@@ -112,12 +122,19 @@ export function AddExpense({ navigate, editExpense }: Props) {
       odometer: category === 'Fuel' && odometer ? parseInt(odometer) : null,
       fuelType: category === 'Fuel' ? fuelType : null,
       billImageBase64: imageData?.base64 ?? null,
-    })
+      billMimeType: imageData?.mime ?? null,
+    }
 
-    showToast('Expense saved ✓')
-    setAmount(''); setNotes(''); setLiters(''); setOdometer('')
-    setPreview(null); setImageData(null); setCategory('Fuel')
-    setDate(today())
+    if (isEditing && editExpense) {
+      await updateExpense({ ...editExpense, ...expenseFields })
+      showToast('Expense updated ✓')
+    } else {
+      await addExpense({ vehicleId: activeVehicle.id, ...expenseFields })
+      showToast('Expense saved ✓')
+      setAmount(''); setNotes(''); setLiters(''); setOdometer('')
+      setPreview(null); setImageData(null); setCategory('Fuel')
+      setDate(today())
+    }
     navigate({ screen: 'home' })
   }
 
@@ -131,38 +148,86 @@ export function AddExpense({ navigate, editExpense }: Props) {
           <div className="flex items-center gap-2 mt-1">
             <VehicleTypeIcon type={activeVehicle.type} size={11} />
             <span className="text-sm text-gray-500 dark:text-gray-400">
-              Adding for: <span className="font-semibold text-gray-700 dark:text-gray-300">{activeVehicle.name}</span>
+              {isEditing ? 'Editing for:' : 'Adding for:'}{' '}
+              <span className="font-semibold text-gray-700 dark:text-gray-300">{activeVehicle.name}</span>
             </span>
           </div>
         )}
       </div>
 
       <div className="flex-1 scroll-view pb-nav px-4 pt-3 space-y-4">
-        {/* Bill scan */}
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={scanning}
-          className="w-full border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4
-            flex flex-col items-center gap-2 bg-white dark:bg-gray-800 active:border-primary transition-colors"
-        >
+
+        {/* Bill attachment area */}
+        <div>
+          {/* Hidden inputs */}
+          <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFile} />
+          <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={handleFile} />
+
           {preview ? (
-            <>
-              <img src={preview} className="w-full max-h-40 object-cover rounded-xl" />
-              <span className="flex items-center gap-1 text-xs text-gray-400">
-                <RefreshCw size={12} /> Tap to retake
-              </span>
-            </>
+            <div className="relative bg-white dark:bg-gray-800 border border-black/[0.08] dark:border-white/10 rounded-2xl p-3">
+              {isPdf ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                    <FileText size={22} className="text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">PDF Bill attached</p>
+                    <button onClick={handleViewPdf} className="text-xs text-primary font-semibold">Tap to view</button>
+                  </div>
+                </div>
+              ) : (
+                <img src={preview} className="w-full max-h-40 object-cover rounded-xl" />
+              )}
+              <button
+                onClick={handleRemoveBill}
+                className="absolute top-2 right-2 w-7 h-7 rounded-full bg-gray-900/60 flex items-center justify-center"
+                aria-label="Remove attachment"
+              >
+                <X size={13} className="text-white" />
+              </button>
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => cameraRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-xl"
+                >
+                  <Camera size={13} /> Retake photo
+                </button>
+                <button
+                  onClick={() => fileRef.current?.click()}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-xl"
+                >
+                  <Paperclip size={13} /> Replace file
+                </button>
+              </div>
+            </div>
           ) : (
-            <>
-              {scanning ? <Loader2 size={32} className="text-primary animate-spin" /> : <Camera size={32} className="text-gray-300" />}
-              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                {scanning ? 'Reading bill with AI...' : 'Scan bill with AI'}
-              </span>
-              <span className="text-xs text-gray-400">Tap to photograph your receipt</span>
-            </>
+            <div className="flex gap-2">
+              <button
+                onClick={() => cameraRef.current?.click()}
+                disabled={scanning}
+                className="flex-1 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4
+                  flex flex-col items-center gap-1.5 bg-white dark:bg-gray-800 active:border-primary transition-colors"
+              >
+                {scanning
+                  ? <Loader2 size={24} className="text-primary animate-spin" />
+                  : <Camera size={24} className="text-gray-300" />}
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">
+                  {scanning ? 'Scanning...' : 'Take photo'}
+                </span>
+                <span className="text-[10px] text-gray-400">AI auto-fills fields</span>
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="flex-1 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl p-4
+                  flex flex-col items-center gap-1.5 bg-white dark:bg-gray-800 active:border-primary transition-colors"
+              >
+                <Paperclip size={24} className="text-gray-300" />
+                <span className="text-xs font-semibold text-gray-600 dark:text-gray-300">Attach file</span>
+                <span className="text-[10px] text-gray-400">Image or PDF</span>
+              </button>
+            </div>
           )}
-        </button>
+        </div>
 
         {/* Category */}
         <div>
@@ -177,10 +242,10 @@ export function AddExpense({ navigate, editExpense }: Props) {
         {/* Amount */}
         <div>
           <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1.5">
-            Amount (₹)
+            Amount ({currency.code})
           </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-400">₹</span>
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-gray-400">{currency.symbol}</span>
             <input
               type="number"
               inputMode="decimal"

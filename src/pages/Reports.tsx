@@ -36,7 +36,9 @@ export function Reports({ navigate }: Props) {
     ? expenses.filter((e) => e.date.startsWith(pickedMonth))
     : filterByPeriod(expenses, period)
   const total = filtered.reduce((s, e) => s + e.amount, 0)
-  const fuelAmt = filtered.filter((e) => e.category === 'Fuel').reduce((s, e) => s + e.amount, 0)
+  const fuelExpenses = filtered.filter((e) => e.category === 'Fuel')
+  const fuelAmt = fuelExpenses.reduce((s, e) => s + e.amount, 0)
+  const totalLitres = fuelExpenses.reduce((s, e) => s + (e.liters ?? 0), 0)
 
   const catMap = new Map<string, number>()
   filtered.forEach((e) => catMap.set(e.category, (catMap.get(e.category) ?? 0) + e.amount))
@@ -116,6 +118,8 @@ export function Reports({ navigate }: Props) {
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           <StatCard label="Total spent" value={fmt(total)} sub={`${filtered.length} expenses`} accent />
           <StatCard label="Fuel share" value={total > 0 ? `${((fuelAmt / total) * 100).toFixed(0)}%` : '—'} sub={fmt(fuelAmt)} />
+          <StatCard label="Total fuel cost" value={fmt(fuelAmt)} sub={`${fuelExpenses.length} fill-ups`} />
+          <StatCard label="Total litres" value={totalLitres > 0 ? `${totalLitres.toFixed(1)} L` : '—'} sub={totalLitres > 0 && fuelAmt > 0 ? `${fmt(Math.round(fuelAmt / totalLitres))}/L` : 'No fuel data'} />
         </div>
 
         {/* Bar chart */}
