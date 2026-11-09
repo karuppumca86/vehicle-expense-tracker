@@ -1,4 +1,4 @@
-import { CalendarDays, Download } from 'lucide-react'
+import { CalendarDays, Download, FileArchive } from 'lucide-react'
 import { useState } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -15,6 +15,8 @@ import { CATEGORIES } from '../utils/categories'
 import { fmtShortDate, filterByPeriod } from '../utils/formatters'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { exportVehicleCSV } from '../utils/csvExport'
+import { exportVehicleReceiptsZip, hasReceipts } from '../utils/receiptExport'
+import { useToast } from '../contexts/ToastContext'
 import type { NavState } from '../types'
 
 type Period = 'week' | 'month' | 'year' | 'all' | 'pick'
@@ -27,6 +29,7 @@ interface Props {
 
 export function Reports({ navigate }: Props) {
   const { fmt } = useCurrency()
+  const { showToast } = useToast()
   const { activeVehicle } = useActiveVehicle()
   const { expenses, removeExpense } = useExpenses(activeVehicle?.id ?? null)
   const [period, setPeriod] = useState<Period>('month')
@@ -52,6 +55,16 @@ export function Reports({ navigate }: Props) {
     .map(([date, amount]) => ({ label: fmtShortDate(date), amount }))
 
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date))
+
+  const handleExportReceipts = () => {
+    if (!activeVehicle) return
+    try {
+      const count = exportVehicleReceiptsZip(activeVehicle, filtered)
+      showToast(`${count} receipt${count === 1 ? '' : 's'} downloaded ✓`)
+    } catch {
+      showToast('Receipt export failed', 'error')
+    }
+  }
 
   const PERIODS: { id: Period; label: string }[] = [
     { id: 'week', label: 'Week' },
@@ -169,12 +182,22 @@ export function Reports({ navigate }: Props) {
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <h2 className="text-sm font-bold text-gray-700 dark:text-gray-300">All expenses</h2>
             {sorted.length > 0 && activeVehicle && (
-              <button
-                onClick={() => exportVehicleCSV(activeVehicle, filtered)}
-                className="flex items-center gap-1 text-xs font-semibold text-primary"
-              >
-                <Download size={13} /> Export CSV
-              </button>
+              <div className="flex items-center gap-3">
+                {hasReceipts(filtered) && (
+                  <button
+                    onClick={() => handleExportReceipts()}
+                    className="flex items-center gap-1 text-xs font-semibold text-primary"
+                  >
+                    <FileArchive size={13} /> Receipts
+                  </button>
+                )}
+                <button
+                  onClick={() => exportVehicleCSV(activeVehicle, filtered)}
+                  className="flex items-center gap-1 text-xs font-semibold text-primary"
+                >
+                  <Download size={13} /> Export CSV
+                </button>
+              </div>
             )}
           </div>
           <div className="px-4 pb-2">
