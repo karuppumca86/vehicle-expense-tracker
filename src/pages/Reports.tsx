@@ -1,4 +1,4 @@
-import { CalendarDays, Download, FileArchive } from 'lucide-react'
+import { CalendarDays, Download, FileArchive, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis,
@@ -34,6 +34,7 @@ export function Reports({ navigate }: Props) {
   const { expenses, removeExpense } = useExpenses(activeVehicle?.id ?? null)
   const [period, setPeriod] = useState<Period>('month')
   const [pickedMonth, setPickedMonth] = useState(currentYearMonth())
+  const [exporting, setExporting] = useState(false)
 
   const filtered = period === 'pick'
     ? expenses.filter((e) => e.date.startsWith(pickedMonth))
@@ -56,13 +57,26 @@ export function Reports({ navigate }: Props) {
 
   const sorted = [...filtered].sort((a, b) => b.date.localeCompare(a.date))
 
-  const handleExportReceipts = () => {
-    if (!activeVehicle) return
+  const handleExportReceipts = async () => {
+    if (!activeVehicle || exporting) return
+    setExporting(true)
     try {
-      const count = exportVehicleReceiptsZip(activeVehicle, filtered)
-      showToast(`${count} receipt${count === 1 ? '' : 's'} downloaded ✓`)
+      const { count, skippedPdfs, skippedImages } = await exportVehicleReceiptsZip(activeVehicle, filtered)
+      const skipped = [
+        skippedPdfs > 0 && `${skippedPdfs} PDF${skippedPdfs === 1 ? '' : 's'} over 2 MB skipped`,
+        skippedImages > 0 && `${skippedImages} image${skippedImages === 1 ? '' : 's'} couldn't be reduced`,
+      ].filter(Boolean).join(' · ')
+      if (count === 0) {
+        showToast(`No receipts under 2 MB to export${skipped ? ` (${skipped})` : ''}`, 'error')
+      } else if (skipped) {
+        showToast(`${count} receipt${count === 1 ? '' : 's'} downloaded · ${skipped}`, 'info')
+      } else {
+        showToast(`${count} receipt${count === 1 ? '' : 's'} downloaded ✓`)
+      }
     } catch {
       showToast('Receipt export failed', 'error')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -186,9 +200,12 @@ export function Reports({ navigate }: Props) {
                 {hasReceipts(filtered) && (
                   <button
                     onClick={() => handleExportReceipts()}
-                    className="flex items-center gap-1 text-xs font-semibold text-primary"
+                    disabled={exporting}
+                    className="flex items-center gap-1 text-xs font-semibold text-primary disabled:opacity-60"
                   >
-                    <FileArchive size={13} /> Receipts
+                    {exporting
+                      ? <><Loader2 size={13} className="animate-spin" /> Preparing…</>
+                      : <><FileArchive size={13} /> Receipts</>}
                   </button>
                 )}
                 <button
